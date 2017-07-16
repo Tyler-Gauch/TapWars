@@ -29,28 +29,4 @@
         android:textSize="24sp"
         tools:text="Find Match" />
 
-    <Button
-        android:id="@+id/startMatch"
-        style="@android:style/Theme.Holo.Light"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_column="0"
-        android:layout_row="2"
-        android:text="Start Match"
-        android:textColor="@android:color/holo_red_dark"
-        android:textSize="24sp"
-        tools:text="Start Match" />
-
-    <Button
-        android:id="@+id/stopMatch"
-        style="@android:style/Theme.Holo.Light"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_column="0"
-        android:layout_row="3"
-        android:text="Stop Match"
-        android:textColor="@android:color/holo_red_dark"
-        android:textSize="24sp"
-        tools:text="Stop Match" />
-
 </GridLayout>

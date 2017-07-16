@@ -1,31 +1,34 @@
 package com.tgauch.tapwars;
 
-import android.Manifest;
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.icu.util.Output;
+import android.os.CountDownTimer;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.Payload;
-import com.tgauch.tapwars.enums.NearbyConnectionHelperState;
+import com.tgauch.tapwars.enums.MainState;
 import com.tgauch.tapwars.enums.Player;
-import com.tgauch.tapwars.helpers.NearbyConnectionHelper;
 import com.tgauch.tapwars.interfaces.BattleGroundEventListener;
-import com.tgauch.tapwars.interfaces.NearbyConnectionHelperListener;
+import com.tgauch.tapwars.interfaces.LoaderCallback;
 import com.tgauch.tapwars.views.BattleGroundView;
 
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -48,45 +51,144 @@ public class MainActivity extends ConnectionsActivity implements BattleGroundEve
     private boolean ready = false;
     private BattleGroundView battleGroundView;
     private boolean battleStarted = false;
+    private String name;
+    private String otherPlayerName;
+    private boolean isFullScreen = false;
+    private MainState state = MainState.UNKNOWN;
+    private ProgressDialog loadingDialog;
+    private CountDownTimer loadingTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
-        this.initViews();
+        loadingDialog = new ProgressDialog(this);
+        loadingDialog.setCancelable(false);
+
+        loadMainMenu();
+
+        AccountManager manager = (AccountManager) getSystemService(ACCOUNT_SERVICE);
+        Account[] list = manager.getAccounts();
+        if (list.length > 0) {
+            this.name = list[0].name;
+            if (name.contains("@")) {
+                name = name.substring(0, name.indexOf("@"));
+            }
+        } else {
+            this.name = UUID.randomUUID().toString();
+            name = "guest" + name.substring(0, name.indexOf("-"));
+        }
     }
 
-    private void initViews() {
+    private void loadMainMenu() {
+        setState(MainState.MAIN_MENU_WAITING);
+        setContentView(R.layout.activity_main);
+        if (isFullScreen) {
+            toggleSystemUI();
+        }
 
         this.findMatchButton = (Button) findViewById(R.id.findMatch);
-        this.findMatchButton.setEnabled(false);
+
+        if (!isApiConnected()) {
+            this.findMatchButton.setVisibility(View.INVISIBLE);
+        }
+
         this.findMatchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                setState(MainState.LOOKING_FOR_PLAYER);
                 startAdvertising();
                 startDiscovering();
+                showSpinner("Searching for player", 30000, new LoaderCallback() {
+                    @Override
+                    public void onStart() {
+                    }
+
+                    @Override
+                    public void onTick() {
+                    }
+
+                    @Override
+                    public void onFinish(boolean wasTimeout) {
+                        if (wasTimeout) {
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setMessage("Unable to find a player :(").show();
+                        }
+
+                        disconnect();
+                    }
+                });
+            }
+        });
+    }
+
+    private void showSpinner(String message, int timeout, final LoaderCallback  callback) {
+        // if we are starting a spinner make sure there isn't one already running
+        stopSpinner();
+        callback.onStart();
+        loadingDialog.setMessage(message);
+        loadingDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                stopSpinner();
+                callback.onFinish(false);
+            }
+        });
+        loadingDialog.show();
+        this.loadingTimer = new CountDownTimer(timeout, 1000) {
+
+            public void onTick(long millisUntilFinished) {
+                callback.onTick();
+            }
+
+            public void onFinish() {
+                stopSpinner();
+                callback.onFinish(true);
+            }
+        }.start();
+    }
+
+    private void stopSpinner() {
+        if (loadingDialog != null) {
+            loadingDialog.dismiss();
+        }
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
+    }
+
+    private void loadGameEndScreen(Player winner) {
+        setState(MainState.END_GAME_WAITING);
+        if (isFullScreen) {
+            toggleSystemUI();
+        }
+        setContentView(R.layout.victory_layout);
+        TextView victoryText = (TextView) findViewById(R.id.victoryText);
+        victoryText.setText((winner == localPlayer ? name : otherPlayerName) + " is victorious!");
+
+        Button mainMenu = (Button) findViewById(R.id.mainMenu);
+        mainMenu.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                disconnect();
+                loadMainMenu();
             }
         });
 
-        this.startMatchButton = (Button) findViewById(R.id.startMatch);
-        this.startMatchButton.setVisibility(View.INVISIBLE);
-        this.startMatchButton.setEnabled(false);
-        this.startMatchButton.setOnClickListener(new View.OnClickListener() {
+        Button rematch = (Button) findViewById(R.id.rematch);
+        rematch.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                rollDice();
+            public void onClick(View v) {
+                setState(MainState.ASKING_FOR_REMATCH);
+                suggestStartTime();
             }
         });
 
-        this.stopMatchButton = (Button) findViewById(R.id.stopMatch);
-        this.stopMatchButton.setOnClickListener(new View.OnClickListener() {
+        Button quit = (Button) findViewById(R.id.quit);
+        quit.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                stopAdvertising();
-                stopDiscovering();
-                disconnectFromAllEndpoints();
-                toggleButtons(true);
+            public void onClick(View v) {
+                finish();
             }
         });
     }
@@ -98,7 +200,7 @@ public class MainActivity extends ConnectionsActivity implements BattleGroundEve
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         super.onConnected(bundle);
-        this.findMatchButton.setEnabled(true);
+        this.findMatchButton.setVisibility(View.VISIBLE);
     }
 
     /** We were disconnected! Halt everything! */
@@ -114,42 +216,76 @@ public class MainActivity extends ConnectionsActivity implements BattleGroundEve
     }
 
     @Override
-    protected void onConnectionInitiated(Endpoint endpoint, ConnectionInfo connectionInfo) {
-        // We accept the connection immediately.
-        acceptConnection(endpoint);
+    protected void onConnectionInitiated(final Endpoint endpoint, ConnectionInfo connectionInfo) {
+
+        stopSpinner();
+        new AlertDialog.Builder(this)
+            .setTitle("We found a player!")
+            .setCancelable(false)
+            .setMessage("Game request from " + endpoint.getName() + ". Would you like to accept?")
+            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                    showSpinner("Waiting for " + endpoint, 60000, new LoaderCallback() {
+                        @Override
+                        public void onStart() {
+                        }
+
+                        @Override
+                        public void onTick() {}
+
+                        @Override
+                        public void onFinish(boolean wasTimeout) {
+                            if (wasTimeout) {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setMessage(endpoint + " failed to respond.")
+                                        .setOnDismissListener(new DialogInterface.OnDismissListener() {
+                                            @Override
+                                            public void onDismiss(DialogInterface dialog) {
+                                                findMatchButton.performClick();
+                                            }
+                                        });
+                            } else {
+                                disconnect();
+                            }
+                        }
+                    });
+                    acceptConnection(endpoint);
+                }
+            })
+            .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    rejectConnection(endpoint);
+                    disconnect();
+                }
+            }).show();
     }
 
     @Override
     protected void onEndpointConnected(Endpoint endpoint) {
-        Toast.makeText(
-                this, "Connected to " + endpoint.getName(), Toast.LENGTH_SHORT)
-                .show();
-        toggleButtons(false);
+        stopSpinner();
+        send(Payload.fromBytes(("Username:" + this.name).getBytes()));
+        rollDice();
     }
 
     @Override
     protected void onEndpointDisconnected(Endpoint endpoint) {
-        Toast.makeText(
-                this, "Disconnected from " + endpoint.getName(), Toast.LENGTH_SHORT)
-                .show();
-        toggleButtons(true);
+        setState(MainState.DISCONNECTED);
     }
 
     @Override
     protected void onReceive(Endpoint endpoint, Payload payload) {
         String message = new String(payload.asBytes());
-        Toast.makeText(this, "Received: " + message, Toast.LENGTH_SHORT).show();
         if (message.startsWith("Dice_Roll:")) {
             int roll = Integer.parseInt(message.substring("Dice_Roll:".length()));
             if (roll > lastDiceRoll) {
                 localPlayer = Player.TWO;
-                Toast.makeText(this, "You are Player two!", Toast.LENGTH_LONG).show();
             } else if (roll < lastDiceRoll) {
                 localPlayer = Player.ONE;
-                Toast.makeText(this, "You are Player one!", Toast.LENGTH_SHORT).show();
                 suggestStartTime();
             } else {
-                Toast.makeText(this, "Rolls were same: " + roll + ", " + lastDiceRoll + " rerolling...", Toast.LENGTH_LONG);
                 rollDice();
             }
         } else if (message.startsWith("Start_Time:")) {
@@ -190,26 +326,16 @@ public class MainActivity extends ConnectionsActivity implements BattleGroundEve
                 ready = true;
                 startGame();
             }
-        }
-    }
-
-    private void toggleButtons(boolean showFind) {
-        if (showFind) {
-            this.findMatchButton.setVisibility(View.VISIBLE);
-            this.findMatchButton.setEnabled(true);
-            this.startMatchButton.setVisibility(View.INVISIBLE);
-            this.startMatchButton.setEnabled(false);
-        } else {
-            this.findMatchButton.setVisibility(View.INVISIBLE);
-            this.findMatchButton.setEnabled(false);
-            this.startMatchButton.setVisibility(View.VISIBLE);
-            this.startMatchButton.setEnabled(true);
+        } else if (message.equals("Victory")) {
+            loadGameEndScreen((localPlayer == Player.ONE ? Player.TWO : Player.ONE));
+        } else if (message.startsWith("Username:")) {
+            otherPlayerName = message.substring("Username:".length());
         }
     }
 
     @Override
     protected String getName() {
-        return UUID.randomUUID().toString();
+        return name;
     }
 
     @Override
@@ -238,38 +364,80 @@ public class MainActivity extends ConnectionsActivity implements BattleGroundEve
     }
 
     private void startGame() {
-        this.battleGroundView = new BattleGroundView(this, Color.RED, Color.BLUE, this, this.startTime);
+        if (!isFullScreen) {
+            toggleSystemUI();
+        }
+        setState(MainState.IN_MATCH);
+        this.battleGroundView = new BattleGroundView(this, this, this.startTime);
+
+        if (this.localPlayer == Player.ONE) {
+            this.battleGroundView.initPlayer1(name, Color.RED);
+            this.battleGroundView.initPlayer2(otherPlayerName, Color.BLUE);
+        } else {
+            this.battleGroundView.initPlayer1(otherPlayerName, Color.RED);
+            this.battleGroundView.initPlayer2(name, Color.BLUE);
+        }
+        this.battleGroundView.invalidate();
+
         setContentView(this.battleGroundView);
         this.battleGroundView.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
-        Toast.makeText(this, "Clicked", Toast.LENGTH_SHORT).show();
         if (battleStarted) {
-            Toast.makeText(this, "true", Toast.LENGTH_SHORT).show();
-            send(Payload.fromBytes("Tap".getBytes()));
+            toggleSystemUI();
+
             if (localPlayer == Player.ONE) {
                 battleGroundView.player1Attack();
             } else {
                 battleGroundView.player2Attack();
             }
-        } else {
-            Toast.makeText(this, "false", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public void onVictory(Player winner) {
-        Intent victoryIntent = new Intent(this, VictoryActivity.class);
-        victoryIntent.putExtra("winner", winner);
-        victoryIntent.putExtra("player", localPlayer);
-        startActivity(victoryIntent);
-        finish();
+        send(Payload.fromBytes("Victory".getBytes()));
+        loadGameEndScreen(winner);
     }
 
     @Override
     public void onBattleStart() {
         this.battleStarted = true;
+    }
+
+    // This snippet hides the system bars.
+    private void toggleSystemUI() {
+        isFullScreen = !isFullScreen;
+        // Set the IMMERSIVE flag.
+        // Set the content to appear under the system bars so that the content
+        // doesn't resize when the system bars hide and show.
+        this.getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
+    }
+
+    private void setState(MainState newState) {
+        this.onStateChanged(this.state, newState);
+        this.state = newState;
+    }
+
+    private void onStateChanged(MainState oldState, MainState newState) {
+        switch(newState) {
+            case DISCONNECTED:
+                disconnect();
+                loadMainMenu();
+                break;
+            case MAIN_MENU_WAITING:
+                break;
+            case WAITING_FOR_OTHER_PLAYER:
+
+
+        }
     }
 }

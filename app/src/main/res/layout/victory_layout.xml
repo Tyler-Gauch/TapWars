@@ -14,4 +14,22 @@
         android:textColor="@android:color/holo_blue_dark"
         android:textSize="50sp"
         tools:text="Player One is Victorious!" />
+
+    <Button
+        android:id="@+id/rematch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Rematch" />
+
+    <Button
+        android:id="@+id/mainMenu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Main Menu" />
+
+    <Button
+        android:id="@+id/quit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Quit" />
 </LinearLayout>

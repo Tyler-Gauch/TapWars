@@ -163,6 +163,10 @@ public abstract class ConnectionsActivity extends AppCompatActivity
     mIsAdvertising = false;
   }
 
+  protected boolean isApiConnected() {
+    return mGoogleApiClient != null && mGoogleApiClient.isConnected();
+  }
+
   private void createGoogleApiClient() {
     if (mGoogleApiClient == null) {
       mGoogleApiClient =
@@ -172,6 +176,12 @@ public abstract class ConnectionsActivity extends AppCompatActivity
               .enableAutoManage(this, this)
               .build();
     }
+  }
+
+  protected void disconnect() {
+    stopAdvertising();
+    stopDiscovering();
+    disconnectFromAllEndpoints();
   }
 
   /**
