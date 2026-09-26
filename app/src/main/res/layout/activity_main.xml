@@ -1,32 +1,62 @@
-<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/background_light"
-    tools:context="com.tgauch.tapwars.MainActivity">
+    android:background="@color/menu_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp"
+    tools:context=".MainActivity">
 
     <TextView
-        android:id="@+id/textView"
-        android:layout_width="match_parent"
-        android:layout_height="95dp"
-        android:layout_column="0"
-        android:layout_row="0"
-        android:text="TapWars"
-        android:textAlignment="center"
-        android:textColor="@android:color/holo_blue_dark"
-        android:textSize="50sp"
-        tools:text="TapWars" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textColor="@android:color/white"
+        android:textSize="56sp"
+        android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/findMatch"
-        style="@android:style/Theme.Holo.Light"
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="40dp"
+        android:gravity="center"
+        android:text="@string/tagline"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/playerName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_column="0"
-        android:layout_row="1"
-        android:text="Find Match"
-        android:textColor="@android:color/holo_red_dark"
-        android:textSize="24sp"
-        tools:text="Find Match" />
+        android:layout_marginBottom="24dp"
+        android:autofillHints="username"
+        android:hint="@string/your_name"
+        android:importantForAutofill="no"
+        android:inputType="textPersonName|textCapWords"
+        android:maxLength="20"
+        android:maxLines="1"
+        android:textColor="@android:color/white"
+        android:textColorHint="@color/menu_text_secondary" />
 
-</GridLayout>
+    <Button
+        android:id="@+id/playLocal"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_marginBottom="12dp"
+        android:backgroundTint="@color/player_one"
+        android:text="@string/play_local"
+        android:textColor="@android:color/white"
+        android:textSize="18sp" />
+
+    <Button
+        android:id="@+id/playNearby"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:backgroundTint="@color/player_two"
+        android:text="@string/play_nearby"
+        android:textColor="@android:color/white"
+        android:textSize="18sp" />
+
+</LinearLayout>

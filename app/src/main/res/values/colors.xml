@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
 
-    <color name="black_overlay">#66000000</color>
+    <color name="player_one">#E53935</color>
+    <color name="player_two">#1E88E5</color>
+    <color name="menu_background">#1B1B24</color>
+    <color name="menu_text_secondary">#A0A0B0</color>
+    <color name="panel_background">#CC000000</color>
 </resources>

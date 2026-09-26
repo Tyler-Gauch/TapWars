@@ -1,6 +1,29 @@
 <resources>
     <string name="app_name">TapWars</string>
+    <string name="tagline">Tap faster than your friend to take over the screen.</string>
+    <string name="your_name">Your name</string>
+    <string name="play_local">Play on this phone</string>
+    <string name="play_nearby">Play with a nearby phone</string>
 
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="player_one">Player 1</string>
+    <string name="player_two">Player 2</string>
+    <string name="go">TAP!</string>
+    <string name="you_win">YOU WIN!</string>
+    <string name="you_lose">YOU LOSE</string>
+    <string name="rematch">Rematch</string>
+    <string name="main_menu">Menu</string>
+
+    <string name="need_permissions">Allow nearby access to find a player</string>
+    <string name="permissions_denied">TapWars needs nearby-device access to play with another phone.</string>
+    <string name="searching">Looking for a nearby player…</string>
+    <string name="found_player">Found a player!</string>
+    <string name="confirm_opponent">Play against %1$s?\n\nBoth phones should show the code %2$s.</string>
+    <string name="play">Play</string>
+    <string name="no_thanks">No thanks</string>
+    <string name="waiting_for">Waiting for %1$s…</string>
+    <string name="get_ready">Get ready…</string>
+    <string name="wants_rematch">%1$s wants a rematch!</string>
+    <string name="opponent_left">%1$s left the game.</string>
+    <string name="your_opponent">Your opponent</string>
+    <string name="nearby_error">Couldn\'t start Nearby: %1$s</string>
 </resources>
